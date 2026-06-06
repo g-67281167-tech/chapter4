@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 3 Gravitation - Flashcard Game</title>
+<style>
+:root {
+  --bg1: #f5f3ff;
+  --bg2: #f8fafc;
+  --card: rgba(255,255,255,0.94);
+  --text: #111827;
+  --muted: #64748b;
+  --line: rgba(15, 23, 42, .13);
+  --accent: #7c3aed;
+  --accent2: #0f766e;
+  --danger: #b91c1c;
+  --gold: #f59e0b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top left, #ddd6fe 0, transparent 34%), radial-gradient(circle at bottom right, #ccfbf1 0, transparent 28%), linear-gradient(135deg, var(--bg1), var(--bg2));
+}
+.app { width: min(1120px, 94vw); margin: 0 auto; padding: 28px 0 42px; }
+.hero { display: grid; gap: 16px; grid-template-columns: 1.4fr .7fr; align-items: stretch; margin-bottom: 18px; }
+.panel {
+  background: var(--card); border: 1px solid var(--line); border-radius: 24px;
+  box-shadow: 0 18px 50px rgba(15,23,42,.10); padding: 22px;
+  backdrop-filter: blur(8px);
+}
+h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1.05; }
+.subtitle { color: var(--muted); margin: 10px 0 0; font-size: 16px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.badge { padding: 7px 10px; border-radius: 999px; background: #f3e8ff; color: #6d28d9; font-weight: 800; font-size: 12px; }
+.scoregrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.score { padding: 14px; border-radius: 18px; background: #f8fafc; border: 1px solid var(--line); }
+.score strong { display: block; font-size: 26px; }
+.score span { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+button, select {
+  border: 1px solid var(--line); background: white; border-radius: 14px; padding: 11px 14px;
+  font-weight: 800; color: var(--text); cursor: pointer; font-size: 14px;
+}
+button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(15,23,42,.10); }
+.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.success { background: var(--accent2); color: white; border-color: var(--accent2); }
+.warn { background: var(--gold); color: #1f2937; border-color: var(--gold); }
+.danger { background: var(--danger); color: white; border-color: var(--danger); }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start; }
+.flashwrap { perspective: 1200px; }
+.flashcard { min-height: 400px; width: 100%; position: relative; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2,.7,.2,1); cursor: pointer; }
+.flashcard.flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; background: white; border-radius: 30px; border: 1px solid var(--line);
+  box-shadow: 0 22px 70px rgba(15,23,42,.16); backface-visibility: hidden;
+  padding: clamp(24px, 4vw, 42px); display: flex; flex-direction: column; justify-content: center;
+}
+.back { transform: rotateY(180deg); background: linear-gradient(135deg, #ffffff, #f5f3ff); }
+.kicker { color: var(--accent); font-size: 13px; letter-spacing: .09em; text-transform: uppercase; font-weight: 900; margin-bottom: 14px; }
+.question { font-size: clamp(27px, 4vw, 45px); font-weight: 900; line-height: 1.15; }
+.answer { font-size: clamp(24px, 3.4vw, 39px); font-weight: 850; line-height: 1.2; }
+.tap { margin-top: 22px; color: var(--muted); font-weight: 700; }
+.progressbar { height: 12px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 14px; }
+.progressbar > div { height: 100%; background: linear-gradient(90deg, #7c3aed, #14b8a6); width: 0%; transition: width .25s ease; }
+.side h2 { margin-top: 0; }
+.list { max-height: 540px; overflow: auto; display: grid; gap: 8px; padding-right: 4px; }
+.item { padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; }
+.item.active { border-color: var(--accent); background: #f5f3ff; }
+.item .num { font-weight: 900; color: var(--accent); margin-right: 6px; }
+.quiz { display: none; }
+.quiz.active { display: block; }
+.options { display: grid; gap: 10px; margin-top: 18px; }
+.option { text-align: left; line-height: 1.3; }
+.option.correct { background: #dcfce7; border-color: #16a34a; }
+.option.wrong { background: #fee2e2; border-color: #dc2626; }
+.feedback { margin-top: 14px; padding: 14px; border-radius: 14px; background: #f8fafc; border: 1px solid var(--line); font-weight: 800; min-height: 52px; }
+footer { margin-top: 18px; color: var(--muted); text-align: center; font-size: 13px; }
+@media (max-width: 860px) { .hero, .stage { grid-template-columns: 1fr; } .flashcard { min-height: 440px; } }
+@media print { body { background: white; } .controls, .side, footer { display: none; } .hero, .stage { display: block; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hero">
+    <div class="panel">
+      <h1>Chapter 3: Gravitation</h1>
+      <p class="subtitle">Interactive flashcard game for Form 4 Physics. Click the card to flip, shuffle the deck, or use quiz mode for self-checking.</p>
+      <div class="badges"><span class="badge">Universal Gravitation</span><span class="badge">g = GM/r^2</span><span class="badge">Circular Motion</span><span class="badge">Satellites</span><span class="badge">Kepler's Laws</span><span class="badge">Escape Velocity</span></div>
+    </div>
+    <div class="panel">
+      <div class="scoregrid">
+        <div class="score"><strong id="currentNo">1</strong><span>Current Card</span></div>
+        <div class="score"><strong id="totalNo">0</strong><span>Total Cards</span></div>
+        <div class="score"><strong id="knowNo">0</strong><span>I Know</span></div>
+        <div class="score"><strong id="reviewNo">0</strong><span>Need Review</span></div>
+      </div>
+      <div class="progressbar"><div id="bar"></div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" onclick="prevCard()">Previous</button>
+    <button class="primary" onclick="nextCard()">Next</button>
+    <button onclick="flipCard()">Flip</button>
+    <button onclick="shuffleDeck()">Shuffle</button>
+    <button class="success" onclick="markCard('know')">I Know</button>
+    <button class="warn" onclick="markCard('review')">Need Review</button>
+    <button onclick="toggleMode()" id="modeBtn">Quiz Mode</button>
+    <select id="topicFilter" onchange="filterTopic()"><option value="All">All Topics</option></select>
+    <button class="danger" onclick="resetProgress()">Reset</button>
+  </div>
+
+  <div class="stage">
+    <div>
+      <div id="flashMode" class="flashwrap">
+        <div id="card" class="flashcard" onclick="flipCard()">
+          <div class="face front"><div class="kicker" id="frontTopic">Topic</div><div class="question" id="frontText"></div><div class="tap">Click to reveal answer</div></div>
+          <div class="face back"><div class="kicker" id="backTopic">Answer</div><div class="answer" id="backText"></div><div class="tap">Click to return to question</div></div>
+        </div>
+      </div>
+      <div id="quizMode" class="panel quiz">
+        <div class="kicker" id="quizTopic">Quiz</div>
+        <div class="question" id="quizQuestion"></div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback">Choose the correct answer.</div>
+      </div>
+    </div>
+    <div class="panel side">
+      <h2>Deck List</h2>
+      <div class="list" id="deckList"></div>
+    </div>
+  </div>
+  <footer>Source material: Chapter 3 Gravitation, Form 4. Built for classroom revision and self-study.</footer>
+</div>
+<script>
+const originalCards = [{"topic": "Overview", "front": "What is the title of Chapter 3?", "back": "Gravitation."}, {"topic": "Universal Gravitation", "front": "State Newton's Universal Law of Gravitation in words.", "back": "The gravitational force is directly proportional to the product of the masses of two objects and inversely proportional to the square of the distance between their centres of gravity."}, {"topic": "Universal Gravitation", "front": "Write the formula for Newton's Universal Law of Gravitation.", "back": "F = GMm / r^2."}, {"topic": "Universal Gravitation", "front": "In F = GMm / r^2, what does F represent?", "back": "F represents the gravitational force between two objects."}, {"topic": "Universal Gravitation", "front": "In F = GMm / r^2, what does G represent?", "back": "G represents the universal gravitational constant."}, {"topic": "Universal Gravitation", "front": "In F = GMm / r^2, what does M represent?", "back": "M represents the mass of the planet or larger object."}, {"topic": "Universal Gravitation", "front": "In F = GMm / r^2, what does m represent?", "back": "m represents the mass of the smaller object."}, {"topic": "Universal Gravitation", "front": "In F = GMm / r^2, what does r represent?", "back": "r represents the distance between the centres of gravity of the two objects."}, {"topic": "Universal Gravitation", "front": "What happens to gravitational force when the product of the two masses increases?", "back": "The gravitational force increases."}, {"topic": "Universal Gravitation", "front": "What happens to gravitational force when the distance between two objects increases?", "back": "The gravitational force decreases because it is inversely proportional to r^2."}, {"topic": "Universal Gravitation", "front": "If the distance between two objects is doubled, what happens to the gravitational force?", "back": "The gravitational force becomes one quarter of the original value."}, {"topic": "Weight and Gravity", "front": "Write the formula for weight.", "back": "W = mg."}, {"topic": "Weight and Gravity", "front": "What is weight?", "back": "Weight is the gravitational force acting on an object."}, {"topic": "Weight and Gravity", "front": "How can W = mg be related to Newton's Universal Law of Gravitation?", "back": "Since W = mg and F = GMm / r^2, we can write mg = GMm / r^2."}, {"topic": "Gravitational Field Strength", "front": "Derive the formula for gravitational field strength from mg = GMm / r^2.", "back": "Cancel m on both sides to obtain g = GM / r^2."}, {"topic": "Gravitational Field Strength", "front": "Write the formula for gravitational field strength near a planet.", "back": "g = GM / r^2."}, {"topic": "Gravitational Field Strength", "front": "What does g represent in Chapter 3?", "back": "g represents gravitational acceleration or gravitational field strength."}, {"topic": "Gravitational Field Strength", "front": "Where is g maximum for a planet?", "back": "g is maximum on the surface of the planet."}, {"topic": "Gravitational Field Strength", "front": "What two factors affect gravitational field strength, g?", "back": "The mass of the planet and the distance of the object from the centre of the planet."}, {"topic": "Gravitational Field Strength", "front": "How does g change when distance from the centre of the planet increases?", "back": "g decreases as distance increases, following g proportional to 1 / r^2."}, {"topic": "Gravitational Field Strength", "front": "How does a larger planet mass affect gravitational field strength?", "back": "A larger planet mass gives a larger gravitational field strength at the same distance."}, {"topic": "Linear and Circular Motion", "front": "Write the formula for linear acceleration.", "back": "a = (v - u) / t."}, {"topic": "Linear and Circular Motion", "front": "In a = (v - u) / t, what does u represent?", "back": "u represents the initial velocity."}, {"topic": "Linear and Circular Motion", "front": "In a = (v - u) / t, what does v represent?", "back": "v represents the final velocity."}, {"topic": "Linear and Circular Motion", "front": "In a = (v - u) / t, what does t represent?", "back": "t represents the time taken."}, {"topic": "Circular Motion", "front": "Why does an object moving in a circle experience acceleration?", "back": "It experiences acceleration because its direction of motion is always changing."}, {"topic": "Circular Motion", "front": "What is centripetal acceleration?", "back": "Centripetal acceleration is the acceleration of an object moving in a circular path, directed towards the centre of the circle."}, {"topic": "Circular Motion", "front": "Write the formula for centripetal acceleration.", "back": "a = v^2 / r."}, {"topic": "Circular Motion", "front": "What is centripetal force?", "back": "Centripetal force is the resultant force directed towards the centre of a circular path, causing circular motion."}, {"topic": "Circular Motion", "front": "Write the formula for centripetal force.", "back": "F = mv^2 / r."}, {"topic": "Circular Motion", "front": "In F = mv^2 / r, what does v represent?", "back": "v represents the linear velocity of the object in circular motion."}, {"topic": "Circular Motion", "front": "In F = mv^2 / r, what does r represent?", "back": "r represents the radius of the circular path."}, {"topic": "Newton's Second Law", "front": "What is the formula for Newton's Second Law?", "back": "F = ma."}, {"topic": "Newton's Second Law", "front": "How is resultant force related to acceleration?", "back": "The resultant force causes acceleration in the direction of the force."}, {"topic": "Satellite Motion", "front": "What force provides the centripetal force for a satellite orbiting a planet?", "back": "Gravitational force provides the centripetal force."}, {"topic": "Satellite Motion", "front": "For a satellite in circular orbit, which two forces are equal?", "back": "Gravitational force is equal to centripetal force."}, {"topic": "Satellite Motion", "front": "Write the equality between gravitational force and centripetal force for a satellite.", "back": "GMm / r^2 = mv^2 / r."}, {"topic": "Satellite Motion", "front": "What is the formula for the linear velocity of a satellite in circular orbit?", "back": "v = sqrt(GM / r)."}, {"topic": "Satellite Motion", "front": "What two factors affect the linear velocity of a satellite?", "back": "The mass of the planet at the centre of the orbit and the distance between the planet and the satellite."}, {"topic": "Satellite Motion", "front": "What happens if gravitational force equals the centripetal force required?", "back": "The satellite remains in its orbit."}, {"topic": "Satellite Motion", "front": "What may happen if the planet's gravitational force is greater than the centripetal force required?", "back": "The satellite may drop to a lower orbit, enter the atmosphere, experience friction, and burn."}, {"topic": "Satellite Motion", "front": "Why can a satellite move in a circular orbit?", "back": "It has enough linear velocity while gravitational force acts as the centripetal force towards the planet."}, {"topic": "Kepler's Laws", "front": "State Kepler's First Law.", "back": "All planets move in elliptical orbits, with the Sun at one focus."}, {"topic": "Kepler's Laws", "front": "What is another name for Kepler's First Law?", "back": "The Law of Orbits."}, {"topic": "Kepler's Laws", "front": "State Kepler's Second Law.", "back": "A line connecting a planet to the Sun sweeps out equal areas in equal times."}, {"topic": "Kepler's Laws", "front": "What is another name for Kepler's Second Law?", "back": "The Law of Areas."}, {"topic": "Kepler's Laws", "front": "State Kepler's Third Law.", "back": "The square of the period of any planet is directly proportional to the cube of the radius of its orbit."}, {"topic": "Kepler's Laws", "front": "What is another name for Kepler's Third Law?", "back": "The Law of Periods."}, {"topic": "Kepler's Laws", "front": "Write the relationship for Kepler's Third Law.", "back": "T^2 is proportional to r^3."}, {"topic": "Kepler's Laws", "front": "In T^2 proportional to r^3, what does T represent?", "back": "T represents the orbital period."}, {"topic": "Kepler's Laws", "front": "In T^2 proportional to r^3, what does r represent?", "back": "r represents the radius or average radius of the orbit."}, {"topic": "Satellites", "front": "What is a satellite?", "back": "A satellite is an object orbiting around a larger body due to gravitational force."}, {"topic": "Satellites", "front": "What is a man-made satellite?", "back": "A man-made satellite is an artificial object placed in orbit around a larger body, such as Earth."}, {"topic": "Geostationary Satellite", "front": "What is the orbiting period of a geostationary satellite?", "back": "24 hours."}, {"topic": "Geostationary Satellite", "front": "Where does a geostationary satellite appear to be located from Earth?", "back": "It appears to stay at the same geographical location."}, {"topic": "Geostationary Satellite", "front": "What is the height of a geostationary satellite above Earth's surface?", "back": "About 35,786 km."}, {"topic": "Geostationary Satellite", "front": "Describe the orbit of a geostationary satellite.", "back": "It moves in a circular geostationary orbit fixed above the equator."}, {"topic": "Geostationary Satellite", "front": "What is the direction of motion of a geostationary satellite?", "back": "It moves in the same direction as the rotation of Earth."}, {"topic": "Geostationary Satellite", "front": "Give two uses of geostationary satellites.", "back": "Telecommunications, broadcasting, weather forecasting, remote sensing, navigation, or internet connectivity."}, {"topic": "Non-Geostationary Satellite", "front": "What is the orbiting period of a non-geostationary satellite?", "back": "It is greater than or less than 24 hours."}, {"topic": "Non-Geostationary Satellite", "front": "Does a non-geostationary satellite stay above the same geographical location?", "back": "No. Its geographical location changes."}, {"topic": "Non-Geostationary Satellite", "front": "What is the usual height of a non-geostationary satellite compared with 35,786 km?", "back": "It is usually less than 35,786 km."}, {"topic": "Non-Geostationary Satellite", "front": "Name three types of non-geostationary orbits.", "back": "LEO, MEO, and HEO."}, {"topic": "Non-Geostationary Satellite", "front": "Does a non-geostationary satellite have to move in the same direction as Earth's rotation?", "back": "No. It is not necessarily in the same direction as Earth's rotation."}, {"topic": "Non-Geostationary Satellite", "front": "Give two uses of non-geostationary satellites.", "back": "GPS, Earth imaging, weather forecasting, lower-cost satellite services, or smaller satellite missions."}, {"topic": "Satellite Comparison", "front": "Which satellite type stays at the same geographical location?", "back": "A geostationary satellite."}, {"topic": "Satellite Comparison", "front": "Which satellite type can have LEO, MEO, or HEO orbits?", "back": "A non-geostationary satellite."}, {"topic": "Satellite Comparison", "front": "Which satellite type has an orbiting period of 24 hours?", "back": "A geostationary satellite."}, {"topic": "Escape Velocity", "front": "What is escape velocity?", "back": "Escape velocity is the minimum velocity required by a mass to escape completely from a planet to infinity in outer space."}, {"topic": "Escape Velocity", "front": "Write the formula for escape velocity.", "back": "v = sqrt(2GM / r)."}, {"topic": "Escape Velocity", "front": "Why can Earth maintain its atmosphere?", "back": "Earth can maintain its atmosphere because the air molecules in the atmosphere do not reach Earth's escape velocity."}, {"topic": "Escape Velocity", "front": "What happens if an object reaches or exceeds escape velocity?", "back": "It can escape completely from the planet's gravitational attraction."}, {"topic": "Formula Practice", "front": "Which formula connects weight and gravitational field strength?", "back": "W = mg."}, {"topic": "Formula Practice", "front": "Which formula gives gravitational field strength around a planet?", "back": "g = GM / r^2."}, {"topic": "Formula Practice", "front": "Which formula gives the force between two masses due to gravity?", "back": "F = GMm / r^2."}, {"topic": "Formula Practice", "front": "Which formula gives centripetal acceleration?", "back": "a = v^2 / r."}, {"topic": "Formula Practice", "front": "Which formula gives centripetal force?", "back": "F = mv^2 / r."}, {"topic": "Formula Practice", "front": "Which formula gives the orbital speed of a satellite?", "back": "v = sqrt(GM / r)."}, {"topic": "Formula Practice", "front": "Which formula gives escape velocity?", "back": "v = sqrt(2GM / r)."}];
+let deck = [...originalCards];
+let current = 0;
+let flipped = false;
+let mode = 'flash';
+let stats = {know: new Set(), review: new Set()};
+
+function init() {
+  document.getElementById('totalNo').textContent = deck.length;
+  const topics = [...new Set(originalCards.map(c => c.topic))].sort();
+  const sel = document.getElementById('topicFilter');
+  topics.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
+  render();
+}
+function render() {
+  if (!deck.length) return;
+  flipped = false;
+  document.getElementById('card').classList.remove('flipped');
+  const c = deck[current];
+  document.getElementById('currentNo').textContent = current + 1;
+  document.getElementById('frontTopic').textContent = c.topic;
+  document.getElementById('backTopic').textContent = c.topic;
+  document.getElementById('frontText').textContent = c.front;
+  document.getElementById('backText').textContent = c.back;
+  document.getElementById('bar').style.width = (((current + 1) / deck.length) * 100) + '%';
+  renderList();
+  if (mode === 'quiz') renderQuiz();
+}
+function renderList() {
+  const list = document.getElementById('deckList');
+  list.innerHTML = '';
+  deck.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'item' + (i === current ? ' active' : '');
+    d.innerHTML = `<span class="num">${i+1}.</span>${c.front}`;
+    d.onclick = () => { current = i; render(); };
+    list.appendChild(d);
+  });
+}
+function flipCard() {
+  if (mode !== 'flash') return;
+  flipped = !flipped;
+  document.getElementById('card').classList.toggle('flipped', flipped);
+}
+function nextCard() { current = (current + 1) % deck.length; render(); }
+function prevCard() { current = (current - 1 + deck.length) % deck.length; render(); }
+function shuffleDeck() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  current = 0; render();
+}
+function markCard(type) {
+  const key = deck[current].front;
+  if (type === 'know') { stats.know.add(key); stats.review.delete(key); }
+  if (type === 'review') { stats.review.add(key); stats.know.delete(key); }
+  document.getElementById('knowNo').textContent = stats.know.size;
+  document.getElementById('reviewNo').textContent = stats.review.size;
+  nextCard();
+}
+function resetProgress() {
+  stats.know.clear(); stats.review.clear(); current = 0;
+  document.getElementById('knowNo').textContent = '0';
+  document.getElementById('reviewNo').textContent = '0';
+  render();
+}
+function toggleMode() {
+  mode = mode === 'flash' ? 'quiz' : 'flash';
+  document.getElementById('modeBtn').textContent = mode === 'flash' ? 'Quiz Mode' : 'Flashcard Mode';
+  document.getElementById('flashMode').style.display = mode === 'flash' ? 'block' : 'none';
+  document.getElementById('quizMode').classList.toggle('active', mode === 'quiz');
+  render();
+}
+function renderQuiz() {
+  const c = deck[current];
+  document.getElementById('quizTopic').textContent = c.topic;
+  document.getElementById('quizQuestion').textContent = c.front;
+  const options = [c.back];
+  const pool = originalCards.map(x => x.back).filter(x => x !== c.back);
+  while (options.length < 4 && pool.length) {
+    const idx = Math.floor(Math.random() * pool.length);
+    options.push(pool.splice(idx,1)[0]);
+  }
+  options.sort(() => Math.random() - 0.5);
+  const box = document.getElementById('options');
+  box.innerHTML = '';
+  document.getElementById('feedback').textContent = 'Choose the correct answer.';
+  options.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'option';
+    b.textContent = opt;
+    b.onclick = () => {
+      document.querySelectorAll('.option').forEach(x => x.disabled = true);
+      if (opt === c.back) { b.classList.add('correct'); document.getElementById('feedback').textContent = 'Correct!'; }
+      else { b.classList.add('wrong'); document.getElementById('feedback').textContent = 'Not correct. Correct answer: ' + c.back; }
+    };
+    box.appendChild(b);
+  });
+}
+function filterTopic() {
+  const topic = document.getElementById('topicFilter').value;
+  deck = topic === 'All' ? [...originalCards] : originalCards.filter(c => c.topic === topic);
+  current = 0;
+  document.getElementById('totalNo').textContent = deck.length;
+  render();
+}
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextCard();
+  if (e.key === 'ArrowLeft') prevCard();
+  if (e.key === ' ') { e.preventDefault(); flipCard(); }
+});
+init();
+</script>
+</body>
+</html>
