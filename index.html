@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 4 Heat - Flashcard Game</title>
+<style>
+:root {
+  --bg1: #fff7ed;
+  --bg2: #f8fafc;
+  --card: rgba(255,255,255,0.95);
+  --text: #111827;
+  --muted: #64748b;
+  --line: rgba(15, 23, 42, .13);
+  --accent: #ea580c;
+  --accent2: #0891b2;
+  --danger: #b91c1c;
+  --gold: #f59e0b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top left, #fed7aa 0, transparent 34%), radial-gradient(circle at bottom right, #cffafe 0, transparent 28%), linear-gradient(135deg, var(--bg1), var(--bg2));
+}
+.app { width: min(1120px, 94vw); margin: 0 auto; padding: 28px 0 42px; }
+.hero { display: grid; gap: 16px; grid-template-columns: 1.4fr .7fr; align-items: stretch; margin-bottom: 18px; }
+.panel {
+  background: var(--card); border: 1px solid var(--line); border-radius: 24px;
+  box-shadow: 0 18px 50px rgba(15,23,42,.10); padding: 22px;
+  backdrop-filter: blur(8px);
+}
+h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1.05; }
+.subtitle { color: var(--muted); margin: 10px 0 0; font-size: 16px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.badge { padding: 7px 10px; border-radius: 999px; background: #ffedd5; color: #9a3412; font-weight: 800; font-size: 12px; }
+.scoregrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.score { padding: 14px; border-radius: 18px; background: #f8fafc; border: 1px solid var(--line); }
+.score strong { display: block; font-size: 26px; }
+.score span { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+button, select {
+  border: 1px solid var(--line); background: white; border-radius: 14px; padding: 11px 14px;
+  font-weight: 800; color: var(--text); cursor: pointer; font-size: 14px;
+}
+button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(15,23,42,.10); }
+.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.success { background: var(--accent2); color: white; border-color: var(--accent2); }
+.warn { background: var(--gold); color: #1f2937; border-color: var(--gold); }
+.danger { background: var(--danger); color: white; border-color: var(--danger); }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start; }
+.flashwrap { perspective: 1200px; }
+.flashcard { min-height: 400px; width: 100%; position: relative; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2,.7,.2,1); cursor: pointer; }
+.flashcard.flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; background: white; border-radius: 30px; border: 1px solid var(--line);
+  box-shadow: 0 22px 70px rgba(15,23,42,.16); backface-visibility: hidden;
+  padding: clamp(24px, 4vw, 42px); display: flex; flex-direction: column; justify-content: center;
+}
+.back { transform: rotateY(180deg); background: linear-gradient(135deg, #ffffff, #fff7ed); }
+.kicker { color: var(--accent); font-size: 13px; letter-spacing: .09em; text-transform: uppercase; font-weight: 900; margin-bottom: 14px; }
+.question { font-size: clamp(27px, 4vw, 45px); font-weight: 900; line-height: 1.15; }
+.answer { font-size: clamp(24px, 3.4vw, 39px); font-weight: 850; line-height: 1.2; }
+.tap { margin-top: 22px; color: var(--muted); font-weight: 700; }
+.progressbar { height: 12px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 14px; }
+.progressbar > div { height: 100%; background: linear-gradient(90deg, #ea580c, #06b6d4); width: 0%; transition: width .25s ease; }
+.side h2 { margin-top: 0; }
+.list { max-height: 540px; overflow: auto; display: grid; gap: 8px; padding-right: 4px; }
+.item { padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; }
+.item.active { border-color: var(--accent); background: #fff7ed; }
+.item .num { font-weight: 900; color: var(--accent); margin-right: 6px; }
+.quiz { display: none; }
+.quiz.active { display: block; }
+.options { display: grid; gap: 10px; margin-top: 18px; }
+.option { text-align: left; line-height: 1.3; }
+.option.correct { background: #dcfce7; border-color: #16a34a; }
+.option.wrong { background: #fee2e2; border-color: #dc2626; }
+.feedback { margin-top: 14px; padding: 14px; border-radius: 14px; background: #f8fafc; border: 1px solid var(--line); font-weight: 800; min-height: 52px; }
+footer { margin-top: 18px; color: var(--muted); text-align: center; font-size: 13px; }
+.credit { margin-top: 16px; text-align:center; font-size:8px; color:#64748b; }
+@media (max-width: 860px) { .hero, .stage { grid-template-columns: 1fr; } .flashcard { min-height: 440px; } }
+@media print { body { background: white; } .controls, .side, footer { display: none; } .hero, .stage { display: block; } .credit { display:block; font-size:8px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hero">
+    <div class="panel">
+      <h1>Chapter 4: Heat</h1>
+      <p class="subtitle">Interactive flashcard game for Form 4 Physics. Click the card to flip, shuffle the deck, or use quiz mode for self-checking.</p>
+      <div class="badges"><span class="badge">Thermal Equilibrium</span><span class="badge">Q = mcθ</span><span class="badge">Q = ml</span><span class="badge">Specific Heat Capacity</span><span class="badge">Gas Laws</span><span class="badge">Sea Breeze</span></div>
+    </div>
+    <div class="panel">
+      <div class="scoregrid">
+        <div class="score"><strong id="currentNo">1</strong><span>Current Card</span></div>
+        <div class="score"><strong id="totalNo">0</strong><span>Total Cards</span></div>
+        <div class="score"><strong id="knowNo">0</strong><span>I Know</span></div>
+        <div class="score"><strong id="reviewNo">0</strong><span>Need Review</span></div>
+      </div>
+      <div class="progressbar"><div id="bar"></div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" onclick="prevCard()">Previous</button>
+    <button class="primary" onclick="nextCard()">Next</button>
+    <button onclick="flipCard()">Flip</button>
+    <button onclick="shuffleDeck()">Shuffle</button>
+    <button class="success" onclick="markCard('know')">I Know</button>
+    <button class="warn" onclick="markCard('review')">Need Review</button>
+    <button onclick="toggleMode()" id="modeBtn">Quiz Mode</button>
+    <select id="topicFilter" onchange="filterTopic()"><option value="All">All Topics</option></select>
+    <button class="danger" onclick="resetProgress()">Reset</button>
+  </div>
+
+  <div class="stage">
+    <div>
+      <div id="flashMode" class="flashwrap">
+        <div id="card" class="flashcard" onclick="flipCard()">
+          <div class="face front"><div class="kicker" id="frontTopic">Topic</div><div class="question" id="frontText"></div><div class="tap">Click to reveal answer</div></div>
+          <div class="face back"><div class="kicker" id="backTopic">Answer</div><div class="answer" id="backText"></div><div class="tap">Click to return to question</div></div>
+        </div>
+      </div>
+      <div id="quizMode" class="panel quiz">
+        <div class="kicker" id="quizTopic">Quiz</div>
+        <div class="question" id="quizQuestion"></div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback">Choose the correct answer.</div>
+      </div>
+    </div>
+    <div class="panel side">
+      <h2>Deck List</h2>
+      <div class="list" id="deckList"></div>
+    </div>
+  </div>
+  <footer>Chapter 4 Heat | Form 4 Physics Flashcards</footer>
+  <div class="credit">dibangunkan oleh Alan Kho</div>
+</div>
+
+<script>
+const originalCards = [{"topic": "Overview", "front": "What is the title of Chapter 4?", "back": "Heat."}, {"topic": "Thermal Equilibrium", "front": "What is thermal equilibrium?", "back": "Thermal equilibrium is the condition when two objects have the same temperature and the net heat transfer is zero."}, {"topic": "Thermal Equilibrium", "front": "What is the net heat transfer at thermal equilibrium?", "back": "Net heat transfer = 0."}, {"topic": "Thermal Equilibrium", "front": "What happens to the temperatures of two objects at thermal equilibrium?", "back": "Both objects have the same temperature."}, {"topic": "Heat and Temperature", "front": "What is heat?", "back": "Heat is a form of energy."}, {"topic": "Heat and Temperature", "front": "What is temperature?", "back": "Temperature is the degree of hotness of an object."}, {"topic": "Heat and Temperature", "front": "In which direction does heat transfer naturally?", "back": "Heat transfers naturally from a hotter object to a colder object."}, {"topic": "Heat and Temperature", "front": "What happens to heat transfer when two objects reach the same temperature?", "back": "The net heat transfer becomes zero."}, {"topic": "Heat Formula", "front": "Write the formula for heat absorbed or released when temperature changes.", "back": "Q = mcθ."}, {"topic": "Heat Formula", "front": "In Q = mcθ, what does Q represent?", "back": "Q represents the heat energy absorbed or released."}, {"topic": "Heat Formula", "front": "In Q = mcθ, what does m represent?", "back": "m represents the mass of the substance."}, {"topic": "Heat Formula", "front": "In Q = mcθ, what does c represent?", "back": "c represents the specific heat capacity of the substance."}, {"topic": "Heat Formula", "front": "In Q = mcθ, what does θ represent?", "back": "θ represents the change in temperature."}, {"topic": "Heat Formula", "front": "If there is no heat loss to the surroundings, what energy relationship can be used?", "back": "Heat lost by the hotter object = heat gained by the colder object."}, {"topic": "Heat Formula", "front": "Write the heat balance equation shown in the notes.", "back": "m₁c₁θ₁ = m₂c₂θ₂."}, {"topic": "Specific Heat Capacity", "front": "What is specific heat capacity?", "back": "Specific heat capacity is the heat required to raise the temperature of 1 kg of a substance by 1 °C or 1 K."}, {"topic": "Specific Heat Capacity", "front": "Write the formula for specific heat capacity.", "back": "c = Q / mθ."}, {"topic": "Specific Heat Capacity", "front": "What does a high specific heat capacity mean?", "back": "The substance heats up slowly and cools down slowly."}, {"topic": "Specific Heat Capacity", "front": "What does a low specific heat capacity mean?", "back": "The substance heats up quickly and cools down quickly."}, {"topic": "Specific Heat Capacity", "front": "Give examples of materials with high specific heat capacity from the notes.", "back": "Water, cooling agents, glass, and handles of cooking utensils."}, {"topic": "Specific Heat Capacity", "front": "Give examples of materials with low specific heat capacity from the notes.", "back": "Copper, aluminium, and the body of cooking utensils."}, {"topic": "Specific Heat Capacity", "front": "Why is water useful as a cooling agent?", "back": "Water has a high specific heat capacity, so it can absorb a large amount of heat with only a small temperature rise."}, {"topic": "Specific Heat Capacity", "front": "Why are copper and aluminium suitable for the body of cooking utensils?", "back": "They have low specific heat capacity, so they heat up quickly."}, {"topic": "Specific Heat Capacity", "front": "Why should the handle of a cooking utensil have high specific heat capacity?", "back": "It heats up slowly, making it safer to hold."}, {"topic": "Power and Heat", "front": "What formula connects power, time, mass, specific heat capacity and temperature change?", "back": "Pt = mcθ."}, {"topic": "Power and Latent Heat", "front": "What formula connects power, time, mass and specific latent heat?", "back": "Pt = ml."}, {"topic": "Particle Model", "front": "What happens to particles when heat causes a temperature increase?", "back": "The kinetic energy of the particles increases and the particles move faster."}, {"topic": "Particle Model", "front": "What does heat change during heating without a change of state?", "back": "Heat changes the kinetic energy of the particles and changes the temperature."}, {"topic": "Latent Heat", "front": "What is latent heat?", "back": "Latent heat is heat absorbed or released during a change of state without a change in temperature."}, {"topic": "Latent Heat", "front": "Write the formula for latent heat.", "back": "Q = ml."}, {"topic": "Latent Heat", "front": "In Q = ml, what does l represent?", "back": "l represents the specific latent heat of the substance."}, {"topic": "Latent Heat", "front": "What happens to temperature during a change of state?", "back": "There is no change in temperature."}, {"topic": "Latent Heat", "front": "What happens to kinetic energy during a change of state?", "back": "There is no change in kinetic energy."}, {"topic": "Latent Heat", "front": "What does absorbed latent heat do to particles?", "back": "It breaks bonds between particles during a change of state."}, {"topic": "Latent Heat", "front": "What happens when latent heat is released?", "back": "Bonds form between particles during a change of state."}, {"topic": "Specific Latent Heat", "front": "What is specific latent heat?", "back": "Specific latent heat is the heat required for 1 kg of a substance to change state without a change in temperature."}, {"topic": "Specific Latent Heat", "front": "Write the formula for specific latent heat.", "back": "l = Q / m."}, {"topic": "Specific Latent Heat of Fusion", "front": "What is the specific latent heat of fusion?", "back": "The heat absorbed by 1 kg of a substance to change between solid and liquid without a change in temperature."}, {"topic": "Specific Latent Heat of Vaporisation", "front": "What is the specific latent heat of vaporisation?", "back": "The heat absorbed by 1 kg of a substance to change between liquid and gas without a change in temperature."}, {"topic": "Latent Heat Applications", "front": "How does ice cool down water?", "back": "Ice absorbs latent heat of fusion from the surroundings as it melts, causing the water to cool."}, {"topic": "Latent Heat Applications", "front": "Why can steam cook fish effectively?", "back": "Steam releases a large amount of latent heat of vaporisation when it condenses on the fish."}, {"topic": "Latent Heat Applications", "front": "Why does evaporation produce a cooling effect?", "back": "During evaporation, liquid particles absorb latent heat from the surroundings, reducing the temperature."}, {"topic": "Heating Curve", "front": "On a heating curve, what does a sloping section represent?", "back": "A sloping section represents a temperature increase, so Q = mcθ is used."}, {"topic": "Heating Curve", "front": "On a heating curve, what does a flat section represent?", "back": "A flat section represents a change of state at constant temperature, so Q = ml is used."}, {"topic": "Heating Curve", "front": "Which formula is used when temperature changes on a heating curve?", "back": "Q = mcθ."}, {"topic": "Heating Curve", "front": "Which formula is used during a change of state on a heating curve?", "back": "Q = ml."}, {"topic": "Thermometer", "front": "What is a thermometric property?", "back": "A thermometric property is a physical quantity that changes with temperature."}, {"topic": "Thermometer", "front": "Give one example of a thermometric property in a mercury thermometer.", "back": "The volume or length of mercury changes with temperature."}, {"topic": "Mercury Thermometer", "front": "Why is mercury suitable as a liquid in a thermometer?", "back": "Mercury is opaque, has a high boiling point, does not stick to glass, and expands and contracts uniformly."}, {"topic": "Mercury Thermometer", "front": "Why is mercury's opaque appearance useful in a thermometer?", "back": "It makes the mercury column easier to see."}, {"topic": "Mercury Thermometer", "front": "Why is a high boiling point useful for mercury in a thermometer?", "back": "It allows mercury to measure higher temperatures without boiling."}, {"topic": "Mercury Thermometer", "front": "Why should mercury not stick to the glass tube?", "back": "So that the mercury column moves smoothly and gives a clear reading."}, {"topic": "Mercury Thermometer", "front": "Why is uniform expansion important in a thermometer liquid?", "back": "It allows the scale readings to be more reliable and consistent."}, {"topic": "Thermometer Sensitivity", "front": "How can the sensitivity of a thermometer be increased?", "back": "Use a small diameter capillary tube and a thin wall glass bulb."}, {"topic": "Thermometer Sensitivity", "front": "Why does a small diameter capillary tube increase thermometer sensitivity?", "back": "A small volume expansion of liquid produces a larger change in the length of the liquid column."}, {"topic": "Thermometer Sensitivity", "front": "Why does a thin wall glass bulb increase thermometer sensitivity?", "back": "Heat transfers more quickly between the object and the thermometer liquid."}, {"topic": "Refrigerator", "front": "What is the role of the evaporator coils in a refrigerator?", "back": "Evaporator coils remove heat from the air inside the refrigerator."}, {"topic": "Refrigerator", "front": "What is the role of the compressor in a refrigerator?", "back": "The compressor pushes hot compressed gas out into the external coils."}, {"topic": "Refrigerator", "front": "What is the role of the metal coils outside a refrigerator?", "back": "They dissipate heat into the surrounding air."}, {"topic": "Refrigerator", "front": "What happens at the expansion valve in a refrigerator?", "back": "The refrigerant expands and evaporates, helping to produce a cooling effect."}, {"topic": "Refrigerator", "front": "Why is latent heat important in the cooling process of a refrigerator?", "back": "The refrigerant absorbs heat when it evaporates in the evaporator coils."}, {"topic": "Land Breeze", "front": "When does land breeze usually occur?", "back": "Land breeze usually occurs at night."}, {"topic": "Land Breeze", "front": "During land breeze, why does the air above water stay warmer for longer?", "back": "Water has a higher specific heat capacity, so it cools down slowly."}, {"topic": "Land Breeze", "front": "During land breeze, where does warm air rise?", "back": "Warm air rises above the water."}, {"topic": "Land Breeze", "front": "During land breeze, in which direction does the cool air blow?", "back": "Cool air blows from land to sea."}, {"topic": "Sea Breeze", "front": "When does sea breeze usually occur?", "back": "Sea breeze usually occurs during the day."}, {"topic": "Sea Breeze", "front": "During sea breeze, why does the air above water heat up slowly?", "back": "Water has a higher specific heat capacity, so it heats up slowly."}, {"topic": "Sea Breeze", "front": "During sea breeze, where does warm air rise?", "back": "Warm air rises above the land."}, {"topic": "Sea Breeze", "front": "During sea breeze, in which direction does the cool air blow?", "back": "Cool air blows from sea to land."}, {"topic": "Gas Laws", "front": "Which three variables are involved in gas laws in this chapter?", "back": "Pressure, volume, and absolute temperature."}, {"topic": "Gas Laws", "front": "Why must temperature be in Kelvin when using gas laws?", "back": "Gas laws use absolute temperature, so temperature must be converted to Kelvin."}, {"topic": "Temperature Conversion", "front": "How do you convert Celsius temperature to Kelvin?", "back": "T(K) = θ(°C) + 273."}, {"topic": "Absolute Zero", "front": "What is absolute zero temperature?", "back": "Absolute zero is 0 K, which is equal to -273 °C."}, {"topic": "Absolute Zero", "front": "What is the kinetic energy of particles at absolute zero according to the notes?", "back": "The kinetic energy is zero."}, {"topic": "Absolute Zero", "front": "What happens to the volume and pressure of an ideal gas at absolute zero according to the notes?", "back": "Volume = 0 and pressure = 0."}, {"topic": "Boyle's Law", "front": "State Boyle's Law.", "back": "For a fixed mass of gas at constant temperature, pressure is inversely proportional to volume."}, {"topic": "Boyle's Law", "front": "Write the formula for Boyle's Law.", "back": "P₁V₁ = P₂V₂."}, {"topic": "Boyle's Law", "front": "In Boyle's Law, what happens to pressure when volume decreases?", "back": "Pressure increases."}, {"topic": "Boyle's Law", "front": "In Boyle's Law, what happens to volume when pressure increases?", "back": "Volume decreases."}, {"topic": "Charles's Law", "front": "State Charles's Law.", "back": "For a fixed mass of gas at constant pressure, volume is directly proportional to absolute temperature."}, {"topic": "Charles's Law", "front": "Write the formula for Charles's Law.", "back": "V₁ / T₁ = V₂ / T₂."}, {"topic": "Charles's Law", "front": "In Charles's Law, what happens to volume when absolute temperature increases?", "back": "Volume increases."}, {"topic": "Charles's Law", "front": "Which variable is constant in Charles's Law?", "back": "Pressure is constant."}, {"topic": "Pressure Law", "front": "State the Pressure Law.", "back": "For a fixed mass of gas at constant volume, pressure is directly proportional to absolute temperature."}, {"topic": "Pressure Law", "front": "Write the formula for the Pressure Law.", "back": "P₁ / T₁ = P₂ / T₂."}, {"topic": "Pressure Law", "front": "In the Pressure Law, what happens to pressure when absolute temperature increases?", "back": "Pressure increases."}, {"topic": "Pressure Law", "front": "Which variable is constant in the Pressure Law?", "back": "Volume is constant."}, {"topic": "Formula Practice", "front": "Which formula should be used to calculate heat when temperature changes?", "back": "Q = mcθ."}, {"topic": "Formula Practice", "front": "Which formula should be used to calculate heat during a change of state?", "back": "Q = ml."}, {"topic": "Formula Practice", "front": "Which formula should be used for a fixed mass of gas at constant temperature?", "back": "Boyle's Law: P₁V₁ = P₂V₂."}, {"topic": "Formula Practice", "front": "Which formula should be used for a fixed mass of gas at constant pressure?", "back": "Charles's Law: V₁ / T₁ = V₂ / T₂."}, {"topic": "Formula Practice", "front": "Which formula should be used for a fixed mass of gas at constant volume?", "back": "Pressure Law: P₁ / T₁ = P₂ / T₂."}];
+let cards = [...originalCards];
+let index = 0;
+let statusMap = {};
+let quizMode = false;
+let answered = false;
+
+const el = id => document.getElementById(id);
+function escapeHTML(s) { return String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function currentCard() { return cards[index] || originalCards[0]; }
+function render() {
+  const c = currentCard();
+  el('card').classList.remove('flipped');
+  el('frontTopic').textContent = c.topic;
+  el('backTopic').textContent = c.topic + ' | Answer';
+  el('frontText').innerHTML = escapeHTML(c.front);
+  el('backText').innerHTML = escapeHTML(c.back);
+  el('currentNo').textContent = cards.length ? index + 1 : 0;
+  el('totalNo').textContent = cards.length;
+  el('knowNo').textContent = Object.values(statusMap).filter(v => v === 'know').length;
+  el('reviewNo').textContent = Object.values(statusMap).filter(v => v === 'review').length;
+  el('bar').style.width = cards.length ? (((index + 1) / cards.length) * 100) + '%' : '0%';
+  renderDeckList();
+  if (quizMode) renderQuiz();
+}
+function renderDeckList() {
+  const list = el('deckList');
+  list.innerHTML = '';
+  cards.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'item' + (i === index ? ' active' : '');
+    div.innerHTML = `<span class="num">${i+1}.</span> ${escapeHTML(c.front)}`;
+    div.onclick = () => { index = i; render(); };
+    list.appendChild(div);
+  });
+}
+function flipCard() { if (!quizMode) el('card').classList.toggle('flipped'); }
+function nextCard() { if (cards.length) index = (index + 1) % cards.length; render(); }
+function prevCard() { if (cards.length) index = (index - 1 + cards.length) % cards.length; render(); }
+function shuffleDeck() {
+  for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cards[i], cards[j]] = [cards[j], cards[i]]; }
+  index = 0; render();
+}
+function markCard(type) { statusMap[currentCard().front] = type; nextCard(); }
+function resetProgress() { statusMap = {}; index = 0; cards = [...originalCards]; el('topicFilter').value = 'All'; render(); }
+function toggleMode() {
+  quizMode = !quizMode;
+  el('quizMode').classList.toggle('active', quizMode);
+  el('flashMode').style.display = quizMode ? 'none' : 'block';
+  el('modeBtn').textContent = quizMode ? 'Flashcard Mode' : 'Quiz Mode';
+  render();
+}
+function filterTopic() {
+  const topic = el('topicFilter').value;
+  cards = topic === 'All' ? [...originalCards] : originalCards.filter(c => c.topic === topic);
+  index = 0; render();
+}
+function setupTopics() {
+  const topics = [...new Set(originalCards.map(c => c.topic))].sort();
+  for (const t of topics) { const opt = document.createElement('option'); opt.value = t; opt.textContent = t; el('topicFilter').appendChild(opt); }
+}
+function renderQuiz() {
+  const c = currentCard();
+  answered = false;
+  el('quizTopic').textContent = c.topic;
+  el('quizQuestion').textContent = c.front;
+  el('feedback').textContent = 'Choose the correct answer.';
+  const options = [c.back];
+  const pool = originalCards.map(x => x.back).filter(a => a !== c.back);
+  while (options.length < 4 && pool.length) {
+    const pick = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    if (!options.includes(pick)) options.push(pick);
+  }
+  for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
+  const box = el('options');
+  box.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = opt;
+    btn.onclick = () => {
+      if (answered) return;
+      answered = true;
+      if (opt === c.back) { btn.classList.add('correct'); el('feedback').textContent = 'Correct!'; statusMap[c.front] = 'know'; }
+      else { btn.classList.add('wrong'); el('feedback').textContent = 'Not correct. Answer: ' + c.back; statusMap[c.front] = 'review'; }
+      [...box.children].forEach(b => { if (b.textContent === c.back) b.classList.add('correct'); });
+      el('knowNo').textContent = Object.values(statusMap).filter(v => v === 'know').length;
+      el('reviewNo').textContent = Object.values(statusMap).filter(v => v === 'review').length;
+    };
+    box.appendChild(btn);
+  });
+}
+setupTopics();
+render();
+</script>
+</body>
+</html>
